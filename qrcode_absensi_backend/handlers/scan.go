@@ -41,6 +41,16 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Siswa ditemukan:", student.Name)
 	fmt.Println("Nomor WA:", student.Phone)
 
+	// Cek apakah sudah absen hari ini
+	var existing models.Attendance
+	today := time.Now().Format("2006-01-02")
+	err := database.DB.Where("student_id = ? AND DATE(scan_time) = ?", student.ID, today).First(&existing).Error
+	if err == nil {
+		http.Error(w, "Siswa sudah absen hari ini", http.StatusConflict)
+		fmt.Println("Sudah absen hari ini, absen dibatalkan.")
+		return
+	}
+
 	// Simpan data absensi
 	absen := models.Attendance{
 		StudentID: student.ID,
@@ -49,7 +59,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	database.DB.Create(&absen)
 
 	// Format pesan ke WhatsApp
-	msg := fmt.Sprintf("✅ %s (%s) telah hadir pada %s",
+	msg := fmt.Sprintf("✅Telah Hadir Siswa \nNama: %s \nKelas: %s \nTanggal: %s",
 		student.Name,
 		student.Class,
 		absen.ScanTime.Format("02 Jan 2006 15:04"))
@@ -95,13 +105,12 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(resp.Body).Decode(&fonnteResp)
 	fmt.Println("Response Fonnte:", fonnteResp)
 
-	// Cek status
 	if resp.StatusCode != 200 || !fonnteResp["status"].(bool) {
 		http.Error(w, "Gagal mengirim notifikasi WhatsApp", http.StatusInternalServerError)
 		return
 	}
 
-	// Jika berhasil
+	// Berhasil
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Absensi berhasil dan notifikasi telah dikirim",
