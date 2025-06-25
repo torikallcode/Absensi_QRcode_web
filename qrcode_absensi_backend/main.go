@@ -49,6 +49,14 @@ func main() {
 		handlers.GetAllStudents(w, r)
 	})
 
+	http.HandleFunc("/api/attendance", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w, r)
+		if r.Method == http.MethodOptions {
+			return
+		}
+		handlers.GetAttendancesByClass(w, r)
+	})
+
 	// Server jalan
 	port := ":8080"
 	log.Println("Server running on http://localhost" + port)
