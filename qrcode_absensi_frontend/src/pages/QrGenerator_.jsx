@@ -33,8 +33,8 @@ export default function QrGenerator() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">QR Code Siswa</h1>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <h1 className="mb-4 text-2xl font-bold">QR Code Siswa</h1>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {students.map((student) => (
           <div key={student.id} className="p-4 border rounded shadow">
             <p className="font-medium">{student.name}</p>
@@ -44,13 +44,13 @@ export default function QrGenerator() {
               <div className="mt-2">
                 <div
                   id={`qr-${student.id}`}
-                  className="bg-white p-2 inline-block"
+                  className="inline-block p-2 bg-white"
                 >
                   <QRCode value={student.qr_code} size={128} />
                 </div>
                 <button
                   onClick={() => downloadQRCode(student.id, student.name)}
-                  className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-3 py-1 mt-2 text-white bg-blue-500 rounded hover:bg-blue-600"
                 >
                   Download QR
                 </button>

@@ -9,28 +9,41 @@ import (
 	"time"
 )
 
+// handlers/attendance.go
 func GetAttendancesByClass(w http.ResponseWriter, r *http.Request) {
 	class := r.URL.Query().Get("class")
-	date := r.URL.Query().Get("date") // Format: YYYY-MM-DD
+	dateStr := r.URL.Query().Get("date") // format: yyyy-mm-dd
 
-	var attendances []models.Attendance
-	query := database.DB.Preload("Student").Order("scan_time DESC")
+	var results []models.Attendance
 
+	query := database.DB.Model(&models.Attendance{}).Joins("JOIN students ON students.id = attendances.student_id")
+
+	// Filter berdasarkan kelas (optional)
 	if class != "" {
-		query = query.Joins("JOIN students ON students.id = attendances.student_id").Where("students.class = ?", class)
+		query = query.Where("students.class = ?", class)
 	}
 
-	if date != "" {
-		start, _ := time.Parse("2006-01-02", date)
-		end := start.Add(24 * time.Hour)
-		query = query.Where("scan_time >= ? AND scan_time < ?", start, end)
+	// Filter berdasarkan tanggal (optional)
+	if dateStr != "" {
+		date, err := time.Parse("2006-01-02", dateStr)
+		if err == nil {
+			start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+			end := start.Add(24 * time.Hour)
+			query = query.Where("scan_time >= ? AND scan_time < ?", start, end)
+		}
 	}
 
-	if err := query.Find(&attendances).Error; err != nil {
-		http.Error(w, "Gagal mengambil data", http.StatusInternalServerError)
-		return
-	}
+	// Subquery: Ambil hanya absensi pertama per siswa per hari
+	sub := query.
+		Select("MIN(attendances.id)").
+		Group("DATE(scan_time), student_id")
+
+	// Query utama
+	database.DB.Preload("Student").
+		Where("attendances.id IN (?)", sub).
+		Order("scan_time asc").
+		Find(&results)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(attendances)
+	json.NewEncoder(w).Encode(results)
 }
